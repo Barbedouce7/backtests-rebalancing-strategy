@@ -8,8 +8,8 @@ import time
 data_folder = 'datasets'
 rebalancing_ratio = 0.04  # Le taux de rebalancement
 default_weight = 0.03
-start_date = pd.to_datetime('2023-09-01 00:00:00')
-end_date = pd.to_datetime('2023-11-01 01:20:00')
+start_date = pd.to_datetime('2023-01-01 00:00:00')
+end_date = pd.to_datetime('2023-11-04 01:20:00')
 limit = 100000
 data = {}
 portfolio = {}
@@ -20,7 +20,7 @@ proportion_cible = {}
 max_absolu = {}
 capital_initial = {}
 rebalancing_count = 0
-
+outputfile = "dataset_fusion.csv"
 
 #################
 # DATASETS init #
@@ -30,14 +30,17 @@ def initialize_datasets():
     global symbols
     global symbolsPlusAda
     for filename in os.listdir(data_folder):
-        if "snek" not in filename and "cneta" not in filename and "milk" not in filename:
+        # removing buggy datasets (floats) and non-interesting ones
+        if "wrt" not in filename and "ieth" not in filename and "milk" not in filename and "cneta" not in filename and "snek" not in filename :
             if filename.endswith('.csv'):
                 symbol = filename.split('-')[1].split('.')[0]
                 df = pd.read_csv(os.path.join(data_folder, filename), header=None)
                 df.drop(df.columns[2], axis=1, inplace=True)
+                #[df.groupby(df.iloc[:, 0]).df.iloc[:, 1].idxmin()]
+                df.loc[df.groupby(0)[1].idxmin()]
                 df = df.drop_duplicates(subset=0)
+                df[df.columns[1]] = df[df.columns[1]].rolling(window=9).mean() # Moyenne mobile sur 9 entrées
                 df[df.columns[0]] = pd.to_datetime(df.iloc[:, 0])
-                #df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0])
                 filtered_data = df[(df.iloc[:, 0] >= start_date) & (df.iloc[:, 0] <= end_date)]
                 if not filtered_data.empty:
                     data[symbol] = filtered_data
@@ -55,7 +58,8 @@ def initialize_datasets():
     combined_df = combined_df.fillna(method='bfill')
     combined_df = combined_df.drop_duplicates(subset=combined_df.columns.difference(['Date']))
     data = combined_df
-
+    print(data)
+    data.to_csv(outputfile)
 
 ##################
 # PORTFOLIO INIT #
@@ -110,11 +114,11 @@ def portfolio_proportions(row):
     global portfolio_weights
     totalInAda = balanceInAda(row)
     ada_weight = portfolio['ADA'] / totalInAda
-    portfolio_weights['ADA'] = round(ada_weight,3)
+    portfolio_weights['ADA'] = round(ada_weight,4)
     for symbol in symbols:
         asset_value = portfolio[symbol] * row[symbol]
         weight = asset_value / totalInAda
-        portfolio_weights[symbol] = round(weight,3)
+        portfolio_weights[symbol] = round(weight,4)
     return portfolio_weights
 
 def rebalance(row):
@@ -145,6 +149,7 @@ def rebalance(row):
         #print(str(row))
         print("portfolio avant tx: " + str(portfolio))
         print("portfolio_weights : " + str(portfolio_weights))
+        print("portfolio valeur en ADA avant swap : " + str(totalInAda))
         for symbol in symbolsPlusAda:
             if symbol == 'ADA':
                 portfolio[symbol] = round(totalInAda * proportion_cible[symbol], 6)
@@ -158,9 +163,9 @@ def rebalance(row):
         check = 1
         details = ""
         for symbol in symbolsPlusAda :
-            check -= round(portfolio_weights[symbol],3)
+            check -= round(portfolio_weights[symbol],4)
             details += symbol + " " + str(portfolio_weights[symbol]) + " " + str(check) + "\n"
-        if round(check,3) != 0:
+        if round(check,4) != 0:
             print(details)
             raise "problème de poids : {details}"
         #################################
@@ -182,7 +187,7 @@ print("nombre de tokens : " + str(len(symbolsPlusAda)))
 print("rebalancing_ratio : " + str(rebalancing_ratio))
 print("proportions cible : " + str(proportion_cible))
 print("portfolio du départ : " + str(portfolio))
-print("portfolio_weights : " + str(portfolio_weights))
+#print("portfolio_weights : " + str(portfolio_weights))
 
 total_debut = balanceInAda(data.iloc[0])
 print("total en ADA au début : " + str(total_debut))
