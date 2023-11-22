@@ -1,5 +1,6 @@
 #!/bin/env python3
 import os
+import sys
 import pandas as pd
 from datetime import datetime
 import math
@@ -177,7 +178,13 @@ def rebalance(row):
 # Début de la logique
 #
 
-combined_dataset = initialize_datasets()
+if len(sys.argv) > 0:
+    print("dataset loading : "+ sys.argv[1])
+    combined_dataset = pd.read_csv(sys.argv[1])
+    data = combined_dataset
+else:
+    combined_dataset = initialize_datasets()
+
 initialize_portfolio()
 
 
