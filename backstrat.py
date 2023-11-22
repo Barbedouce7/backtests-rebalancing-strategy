@@ -178,7 +178,7 @@ def rebalance(row):
 # Début de la logique
 #
 
-if len(sys.argv) > 0:
+if len(sys.argv) > 1:
     print("dataset loading : "+ sys.argv[1])
     combined_dataset = pd.read_csv(sys.argv[1])
     data = combined_dataset
